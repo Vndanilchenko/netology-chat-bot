@@ -33,8 +33,8 @@ import os
 import requests
 import slack
 import utils.models as models
-import read_google_sheets as schedule
-import send_email as email
+import utils.read_google_sheets as schedule
+import utils.send_email as email
 import pandas as pd
 import re
 from datetime import datetime, date
