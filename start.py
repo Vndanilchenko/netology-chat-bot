@@ -109,32 +109,32 @@ class Slackbot:
         :param kwargs:
         :return:
         """
-        # try:
-        #     print('kwargs: ', kwargs)
-        data = kwargs['data']
-        # print('kwargs: ', data)
-        self.text_in = data.get('text', [])
-        if self.text_in and data.get('subtype', []) not in ['bot_message']:
-            self.web_client = kwargs.get('web_client', [])
-            self.rtm_client = kwargs.get('rtm_client', [])
-            self.channels = [data['channel']]
-            if 'blocks' in data:
-                self.direct_link = True if data['blocks'][0]['elements'][0]['elements'][0]['type']=='user' else False
-            else:
-                self.direct_link = False
-            self.thread_ts = data['ts']
-            self.user = data['user']
-            if ('DMQS540H1' in self.channels or self.direct_link) and 'client_msg_id' in data:
-                print('text_in: ', self.text_in)
-                self.state_in = self.state_out
-                self.text_out = self.make_response()
-                self.reply()
-                print('state_in: ', self.state_in)
-                print('state_out: ', self.state_out)
-                print('{:*^170}'.format(''))
+        try:
+            #     print('kwargs: ', kwargs)
+            data = kwargs['data']
+            # print('kwargs: ', data)
+            self.text_in = data.get('text', [])
+            if self.text_in and data.get('subtype', []) not in ['bot_message']:
+                self.web_client = kwargs.get('web_client', [])
+                self.rtm_client = kwargs.get('rtm_client', [])
+                self.channels = [data['channel']]
+                if 'blocks' in data:
+                    self.direct_link = True if data['blocks'][0]['elements'][0]['elements'][0]['type']=='user' else False
+                else:
+                    self.direct_link = False
+                self.thread_ts = data['ts']
+                self.user = data['user']
+                if ('DMQS540H1' in self.channels or self.direct_link) and 'client_msg_id' in data:
+                    print('text_in: ', self.text_in)
+                    self.state_in = self.state_out
+                    self.text_out = self.make_response()
+                    self.reply()
+                    print('state_in: ', self.state_in)
+                    print('state_out: ', self.state_out)
+                    print('{:*^170}'.format(''))
         # если вдруг начнет крэшиться просто пропустить
-        # except:
-        #     pass
+        except Exception as e:
+            print(self.catch_problems(), ' error: ', e.args)
 
     # функция проверяет заполненность параметров
     def get_query_params(self):
