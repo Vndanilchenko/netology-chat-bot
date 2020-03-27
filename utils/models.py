@@ -1,8 +1,11 @@
+"""
+# module predicts intents
+# @author: vndanilchenko@gmail.com
+"""
 import pandas as pd
 import numpy as np
 from gensim.models import Word2Vec
-import string, re, joblib
-from tqdm import trange
+import re, joblib
 from pymystem3 import Mystem
 from difflib import ndiff
 
