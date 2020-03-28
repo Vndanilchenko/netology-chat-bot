@@ -70,6 +70,10 @@ pattern_channel1 = re.compile(r'\<{1}\#{1}[A-Z0-9]{1,}\|{1}')
 pattern_rbracket = re.compile(r'\>')
 pattern_email = re.compile(r'[0-9a-zа-я_]{1,}\@{1}[a-z]{1,}\.{1}[a-z]{1,}')
 
+@app.route('/')
+def index():
+    return '<h1>Deployed to Heroku</h1>'
+
 class Slackbot:
 
     def __init__(self):
@@ -453,5 +457,5 @@ class Slackbot:
 
 if __name__ == '__main__':
     bot = Slackbot()
-    bot.run()
-    app.run(host='0.0.0.0', port=8080)
+    # bot.run()
+    app.run(host='0.0.0.0', port=5000, debug=True)
