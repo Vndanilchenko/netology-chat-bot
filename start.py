@@ -70,9 +70,9 @@ pattern_channel1 = re.compile(r'\<{1}\#{1}[A-Z0-9]{1,}\|{1}')
 pattern_rbracket = re.compile(r'\>')
 pattern_email = re.compile(r'[0-9a-zа-я_]{1,}\@{1}[a-z]{1,}\.{1}[a-z]{1,}')
 
-@app.route('/')
-def index():
-    return '<h1>Netology chatbot. Deployed to Heroku</h1>'
+# @app.route('/')
+# def index():
+#     return '<h1>Netology chatbot. Deployed to Heroku</h1>'
 
 class Slackbot:
 
