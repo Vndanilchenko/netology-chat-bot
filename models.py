@@ -8,32 +8,40 @@ from gensim.models import Word2Vec
 import re, joblib
 from pymystem3 import Mystem
 from difflib import ndiff
-
+from tqdm import trange
+import warnings
+warnings.filterwarnings('ignore')
 
 LEVENSTEIN_DIST = 2
+THRESHOLD_FUTURE = 0.9
 
 class Classifier:
 
     def __init__(self):
-        self.bazonka = pd.read_excel('./data/kb_new.xlsx', sheet_name='kb')
+        self.bazonka = pd.read_excel('./kb/kb.xlsx', sheet_name='kb')
         self.wvec = Word2Vec.load('./models/word2vec.model')
-        # self.id2word = joblib.load('./data/id2word.pkl')
-        self.word_dict = joblib.load('./data/dict.pkl')
+        self.word_list = joblib.load('./data/word_list.pkl')
         self.vectors = joblib.load('./data/kb_vectors.pkl')
         self.vectors_norm = np.vstack([np.dot(self.vectors[i], self.vectors[i]) for i in range(self.vectors.shape[0])]).squeeze()
+        self.classifier = joblib.load('./models/clf.pkl')
         self.morph = Mystem()
+        self.is_training = False
+        self.is_past = False
+        self.is_future = False
+        print('инициализация Classifier')
 
 
     def levenshtein_distance(self, word):
         """
+        расстояние Левенштейна между входящим запросом и известными моделям словами
         :param word:
         :return:
         """
         most_similar_words = {}
-        for i in range(len(self.word_dict)):
+        for i in range(len(self.word_list)):
             counter = {"+": 0, "-": 0}
             distance = 0
-            temp_word = self.word_dict[i]
+            temp_word = self.word_list[i]
             for edit_code, *_ in ndiff(word, temp_word):
                 if edit_code == " ":
                     distance += max(counter.values())
@@ -61,13 +69,12 @@ class Classifier:
         phrase_checked = []
         for word in phrase.split(' '):
             # если слова нет в словаре, пробуем найти похожее по Левенштейну
-            if word not in self.word_dict:
+            if word not in self.word_list:
                 word_lv = self.levenshtein_distance(word)
                 if word_lv:
                     word = word_lv
             phrase_checked.append(word)
             new_phrase.append(word)
-        print('преобразованная фраза: {}'.format(' '.join(phrase_checked)))
         return ' '.join(new_phrase)
 
     def preprocess(self, text):
@@ -80,8 +87,12 @@ class Classifier:
         text = re.sub(r'[^a-zа-я]', ' ', text)
         text = re.sub(r'([a-zа-яёе])\1{2,}', r'\1\1', text)  # aaaaa -> aa
         text = re.sub(r'([^a-zа-яёе0-9])\1{1,}', r'\1', text).strip()  # )))) -> )
-        text = self.check_phrase(text)
-        return [word for word in self.morph.lemmatize(text) if not any(i in word for i in [' ', '\n'])]
+        if not self.is_training:
+            text = self.check_phrase(text)
+            print('\nпреобразованная фраза: {}'.format(text))
+            text = [word for word in self.morph.lemmatize(text) if not any(i in word for i in [' ', '\n'])]
+            print('нормализованная фраза: {}'.format(' '.join(text)))
+        return text
 
     def vectorize(self, phrase):
         """
@@ -117,38 +128,145 @@ class Classifier:
 
     def predict_proba(self, phrase, model_flag=0):
         """
-        основная функция - предобрабатывает фразу, векторизует, возвращает наиболее близкую фразу к запросу по базе знаний
+        основная функция - предобрабатывает фразу, векторизует и запускает модель в зависимости от типа запроса
+        model_flag==0 - возвращает скор наиболее близкой фразы к запросу по базе знаний и ее класс
+        model_flag==1 - классификатор согласия (yesno)
+        model_flag==2  - классификатор выхода из сценария (user_exit)
+        model_flag==3 - проверка будущего времени (future)
         :param phrase:
         :return:
         """
-        tokens = self.preprocess(phrase)
-        vector = self.vectorize(tokens)
-        if model_flag==0:
-            max_score, max_row = self.cosine_scores(vector)
-            print('ближайшая фраза: ', self.bazonka[self.bazonka.index == max_row]['message'].values[0])
-            max_class = self.bazonka[self.bazonka.index == max_row]['TARGET'].values[0]
-            predictions = (max_score, max_class)
-        # классификатор согласия
-        elif model_flag==1:
-            # predictions = self.model_yes_no(sequences)
-            predictions = (0.99, 0)
-        # классификатор выхода из сценария
-        elif model_flag==2:
-            predictions = (0.99, 0)
-            # predictions = self.model_user_quit(sequences)
-        return predictions
+        predictions = (0.0, 0)
+        try:
+            tokens = self.preprocess(phrase)
+            vector = self.vectorize(tokens)
+            if model_flag==0:
+                max_score, max_row = self.cosine_scores(vector)
+                print('ближайшая фраза: ', self.bazonka[self.bazonka.index == max_row]['message'].values[0])
+                max_class = self.bazonka[self.bazonka.index == max_row]['TARGET'].values[0]
+                predictions = (max_score, max_class)
+                # TODO: сделать этот костыль поэлегантнее
+            elif any(token in ['да', 'уверен', 'уверена', 'уверенный', 'нет', 'отмена', 'отбой', 'стоп', 'остановить', 'остановись'] for token in tokens):
+                if model_flag==1:
+                    if any(token in ['да', 'уверен', 'уверена', 'уверенный', 'ага'] for token in tokens):
+                        predictions = (1.0, 1)
+                    elif any(token in ['нет', 'отмена', 'отбой', 'стоп', 'остановить', 'остановись'] for token in tokens):
+                        predictions = (1.0, 0)
+                elif model_flag==2:
+                    if any(token in ['отмена', 'отбой', 'стоп', 'остановить', 'остановись'] for token in tokens):
+                        predictions = (1.0, 1)
+            else:
+                predictions = self.classifier[model_flag]['clf'].predict_proba(vector.reshape(1, -1))[0]
+                predictions = (max(predictions), np.argmax(predictions))
+            return predictions
+        except Exception as e:
+            print('во время предсказания возникла ошибка: ', e.args)
+            return predictions
 
 
-# if __name__ == '__main__':
-#
-#     # vectors = []
-#     # for i in trange(bazonka.shape[0]):
-#     #     vectors.append(vectorize(preprocess(bazonka.message.iloc[i])))
-#     # vectors
-#     # vectors = np.asarray(vectors)
-#
-#     # joblib.dump(vectors, './data/kb_vectors.pkl')
-#     # vectors = joblib.load('./data/kb_vectors.pkl')
-#     object = Classifier()
-#     score, max_class = object.intent_predict_proba('метеапрогноз', model_flag=0)
-#     res = object.levenshtein_distance('метеапрогноз')
+    def check_time(self, text):
+        """
+        функция проверяет на наличие временных меток во входящей фразе, от нее будет зависеть поле ответа
+        :param text: исходный запрос, text-in
+        :return:
+        """
+        # сначала сделаем метки на время, потом сравним и определим приоритет при одновременном наступлении
+        if any(word in ['вчера', 'раньше', 'ранее', 'прошлое', 'прошлом', 'до'] for word in str(text).split(' ')):
+            self.is_past = True
+        else:
+            for word in self.morph.analyze('отправить email'):
+                if 'analysis' in word:
+                    if word['analysis']:
+                        if 'пе=прош' in word['analysis'][0]['gr']:
+                            self.is_past = True
+                            break
+
+        pred_f = self.predict_proba(text, model_flag=3)
+        if pred_f[0] > THRESHOLD_FUTURE and pred_f[1] == 1:
+            self.is_future = True
+        elif any(word in ['завтра', 'дальше', 'будущее', 'потом', 'будешь', 'далее', 'через', 'будет', 'следующий', 'следующем', 'следующих'] for word in str(text).split(' ')):
+            self.is_future = True
+
+        # примем решение что возвращать
+        if all([self.is_future, self.is_past]):
+            self.is_past == False
+            return 'future'
+        elif not any([self.is_future, self.is_past]):
+            return 'normal'
+        elif self.is_future:
+            self.is_future == False
+            return 'future'
+        elif self.is_past:
+            self.is_past == False
+            return 'past'
+        else:
+            return 'error'
+
+    def fit(self):
+        """
+        модуль при запуске пересоздает словари, преобцчает модель word2vec и сохраняет новые вектора фраз базы знаний
+        :return:
+        """
+        # True: не будет запущен Левенштейн по старому словарю
+
+        self.is_training = True
+        try:
+            bazonka = pd.read_excel('./kb/kb.xlsx', sheet_name='kb')['message'].tolist()
+            data_exit = pd.read_excel('./kb/data_train_user_exit.xlsx')['message'].tolist()
+            data_yesno = pd.read_excel('./kb/data_train_yesno.xlsx')['message'].tolist()
+            data_future = pd.read_excel('./kb/data_train_future.xlsx')['message'].tolist()
+            concatted_phrases = bazonka + data_exit + data_yesno + data_future
+
+            # сохраним базу знаний
+            joblib.dump(bazonka, './data/kb.pkl')
+
+            # создаем словарь исходных слов по обучающим выборкам
+            word_list = set()
+            print('--- создаем словарь исходных слов по обучающим выборкам ---')
+            for sentence_id in trange(len(concatted_phrases)):
+                sequence = self.preprocess(concatted_phrases[sentence_id])
+                for word in sequence:
+                    if word not in word_list:
+                        word_list.add(word)
+            # сохраним словарь
+            joblib.dump(word_list, './data/kb_vectors.pkl')
+
+            # возвращаем флаг в исходное состяние, чтобы начать делать проверку и нормализовать слова
+            self.is_training = False
+
+            # создаем последовательность нормализованных фраз, разбитых на токены
+            print('--- создаем последовательность нормализованных фраз, разбитых на токены ---')
+            sequences = []
+            for sentence_id in trange(self.bazonka.shape[0]):
+                sequences.append(self.preprocess(self.bazonka.message.iloc[sentence_id]))
+
+            # обучим модель word2vec
+            print('--- обучаем word2vec модель ---')
+            wvec = Word2Vec(sentences=sequences, size=50, window=5, min_count=1, seed=777, workers=-1, max_vocab_size=None)
+            wvec.save('./models/word2vec.model')
+
+            # обновим вектора базы знаний
+            print('--- обновляем вектора базы знаний ---')
+            vectors = []
+            for i in trange(len(sequences)):
+                vectors.append(self.vectorize(sequences[i]))
+            self.vectors = np.asarray(vectors)
+            joblib.dump(self.vectors, './data/kb_vectors.pkl')
+            print('{:+^150}'.format('done'))
+        except Exception as e:
+            print('при обучении возникла ошибка: ', e.args)
+            self.is_training = False
+
+
+
+if __name__ == '__main__':
+    object = Classifier()
+    # object.fit()
+    object.preprocess('да')
+    object.vectorize(object.preprocess('привет'))
+    # object.classifier[1]['clf'].predict_proba(object.vectorize(object.preprocess('ага')).reshape(1, -1))
+    # object.check_time('email')
+
+    score, max_class = object.predict_proba('что ты умеешь', model_flag=0)
+    # res = object.levenshtein_distance('метеапрогноз')
+    object.morph.analyze('будущем')

@@ -38,6 +38,7 @@ import send_email as email
 import pandas as pd
 import re
 from datetime import datetime, date
+import time
 
 # импортируем токены
 try:
@@ -50,15 +51,15 @@ except:
     from private.token import weather_key
 
 # import flask as flask
-
+#
 # app = flask.Flask(__name__)
 
 
-TRESHOLD_KB = 0.6           # считаем, что знаем вопрос
-TRESHOLD_EXPLICIT = 0.8     # граница уверенного ответа
-TRESHOLD_APPROVAL = 0.6     # граница вопроса с уточнением
-TRESHOLD_YES_NO = 0.8       # порог отсечки при положительном ответе на уточнение
-TRESHOLD_USER_QUIT = 0.8    # порог отсечки при проверке на отмену ввода параметров при режиме query
+THRESHOLD_KB = 0.6           # считаем, что знаем вопрос
+THRESHOLD_EXPLICIT = 0.8     # граница уверенного ответа
+THRESHOLD_APPROVAL = 0.6     # граница вопроса с уточнением
+THRESHOLD_YES_NO = 0.8       # порог отсечки при положительном ответе на уточнение
+THRESHOLD_USER_QUIT = 0.8    # порог отсечки при проверке на отмену ввода параметров при режиме query
 
 
 # скомпилим регулярочки
@@ -74,6 +75,10 @@ pattern_email = re.compile(r'[0-9a-zа-я_]{1,}\@{1}[a-z]{1,}\.{1}[a-z]{1,}')
 # def index():
 #     return '<h1>Netology chatbot. Deployed to Heroku</h1>'
 
+
+class Class_none(Exception):
+    pass
+
 class Slackbot:
 
     def __init__(self):
@@ -87,12 +92,13 @@ class Slackbot:
         self.text_out = None
         self.schedule = schedule.Read_google_sheet_schedule()
         self.responses_df = self.schedule.run(command='get_responses')
-        self.commands = ['send_info', 'show_weather', 'get_schedule', 'tell_joke', 'send_email']
+        self.commands = ['send_info', 'show_weather', 'get_schedule', 'tell_joke', 'send_email', 'who_is']
         self.classifier = models.Classifier()
         self.state_in = {'intent': None, 'command': None, 'state': 'normal', 'reply': None, 'query_params': {}}
         self.state_out = {'intent': None, 'command': None, 'state': 'normal', 'reply': None, 'query_params': {}}
         self.send_email = email.Send_email()
         self.weather_descr = pd.read_csv('./data/Multilingual_Weather_Conditions.csv', sep=',', encoding='utf-8')
+        self.sleep_cnt = 0
 
     def set_default_state(self):
         """
@@ -116,32 +122,63 @@ class Slackbot:
         :param kwargs:
         :return:
         """
-        try:
+        # try:
             #     print('kwargs: ', kwargs)
-            data = kwargs['data']
-            # print('kwargs: ', data)
-            self.text_in = data.get('text', [])
-            if self.text_in and data.get('subtype', []) not in ['bot_message']:
-                self.web_client = kwargs.get('web_client', [])
-                self.rtm_client = kwargs.get('rtm_client', [])
-                self.channels = [data['channel']]
-                if 'blocks' in data:
-                    self.direct_link = True if data['blocks'][0]['elements'][0]['elements'][0]['type']=='user' else False
-                else:
-                    self.direct_link = False
-                self.thread_ts = data['ts']
-                self.user = data['user']
-                if ('DMQS540H1' in self.channels or self.direct_link) and 'client_msg_id' in data:
-                    print('text_in: ', self.text_in)
-                    self.state_in = self.state_out
-                    self.text_out = self.make_response()
-                    self.reply()
-                    print('state_in: ', self.state_in)
-                    print('state_out: ', self.state_out)
-                    print('{:*^170}'.format(''))
-        # если вдруг начнет крэшиться просто пропустить
-        except Exception as e:
-            print(self.catch_problems(), ' error: ', e.args)
+        data = kwargs['data']
+        # print('kwargs: ', data)
+        self.text_in = data.get('text', [])
+        if self.text_in and data.get('subtype', []) not in ['bot_message']:
+            self.web_client = kwargs.get('web_client', [])
+            self.rtm_client = kwargs.get('rtm_client', [])
+            self.channels = [data['channel']]
+            if 'blocks' in data:
+                self.direct_link = True if data['blocks'][0]['elements'][0]['elements'][0]['type']=='user' else False
+            else:
+                self.direct_link = False
+            self.thread_ts = data['ts']
+            self.user = data['user']
+            if ('DMQS540H1' in self.channels or self.direct_link) and 'client_msg_id' in data:
+                print('text_in: ', self.text_in)
+                self.state_in = self.state_out
+                self.text_out = self.make_response()
+                self.reply()
+                print('state_in: ', self.state_in)
+                print('state_out: ', self.state_out)
+                print('{:*^170}'.format(''))
+        # # если вдруг начнет крэшиться отловить некоторые ошибки и пропустить
+        # except Class_none as e:
+        #     print('{: ^50}'.format('+ + +'))
+        #     print('надо добавить интент в список реакций на google docs! \nerror: ', e.args)
+        #     print('{: ^50}'.format('+ + +'))
+        # except TimeoutError as e:
+        #     print('{: ^50}'.format('+ + +'))
+        #     print(self.catch_problems(), ' \nerror: ', e.args)
+        #     if self.sleep_cnt < 3:
+        #         print('попробуем повторно подключиться через 30 секунд')
+        #         time.sleep(30)
+        #     elif self.sleep_cnt < 10:
+        #         print('попробуем повторно подключиться через 60 секунд')
+        #         time.sleep(60)
+        #     elif self.sleep_cnt < 20:
+        #         print('попробуем повторно подключиться через 5 минут')
+        #         time.sleep(300)
+        #     elif self.sleep_cnt < 30:
+        #         print('попробуем повторно подключиться через 10 минут')
+        #         time.sleep(600)
+        #     elif self.sleep_cnt < 40:
+        #         print('попробуем повторно подключиться через 30 минут')
+        #         time.sleep(1800)
+        #     else:
+        #         print('попробуем повторно подключиться через 60 минут')
+        #         time.sleep(3600)
+        #     self.run()
+        #     print('{: ^50}'.format('+ + +'))
+        # except Exception as e:
+        #     print('{: ^50}'.format('+ + +'))
+        #     print(self.catch_problems(), '\nerror: ', e.args)
+        #     print('{: ^50}'.format('+ + +'))
+
+
 
     # функция проверяет заполненность параметров
     def get_query_params(self):
@@ -160,10 +197,16 @@ class Slackbot:
                       'channel_id': 'это должно заполнитсья само после ввода названия канала',
                         'body': 'введите сообщение',
                         'ok': False}
+        elif self.state_in['state']=='query':
+            params = {'column_id': 'выберите цифрой какую информацию вы хотите посмотреть по преподавателю:\n ' \
+                                    '1. образование\n ' \
+                                    '2. должность\n ' \
+                                    '3. дополнительно',
+                        'ok': False}
+
         else:
             print(f"НЕ НАШЛИ ИНТЕНТ: {self.state_in['intent']}")
             return "к сожалению не смог обработать этот запрос"
-
 
         # проверка на ожидание ответа по параметру
         for param, val in self.state_in['query_params'].items():
@@ -190,25 +233,43 @@ class Slackbot:
                     # проверка наличия канала
                     channel = self.get_channel_id(channel_name=self.text_in)
                     if not channel:
-                        self.state_out = self.state_in
-                        return f'параметр не распознан:\n {params[param]}'
+                        self.repeat_query(params[param])
                     else:
                         self.state_in['query_params']['channel_id'] = channel
                         self.state_in['query_params'][param] = self.text_in
+                # проверка наличия записи в зарпосе про преподавателя
+                elif param == 'column_id':
+                    # проверим не ввел ли пользователь несколько значений
+                    variants = {'education': ['1', 'образование', 'один', 'единица', 'первое'],
+                              'position': ['2', 'должность', 'два', 'двойка', 'второе'],
+                              'extra': ['3', 'дополнительно', 'доп', 'три', 'тройка', 'третье']}
+                    user_choice = set()
+                    for elem in str(self.text_in).split(' '):
+                        for j in range(len(variants)):
+                            if elem in list(variants.values())[j]:
+                                user_choice.add(list(variants.keys())[j])
+                    if not user_choice:
+                        # проверим на фразу "все"
+                        if any(i in ['все', 'весь', 'всю', 'список'] for i in str(self.text_in).split(' ')):
+                            [user_choice.add(i) for i in list(variants.keys())]
+                        else:
+                            self.repeat_query(params[param])
+                    else:
+                        self.state_in['query_params'][param] = list(user_choice)
                 elif param == 'ok':
                     max_score, max_class = self.classifier.predict_proba(self.text_in, model_flag=1)
                     print('ПРОВЕРКА ДА/НЕТ: max_score: ', max_score, 'max_class', max_class)
-                    if max_class == 1 and max_score > TRESHOLD_YES_NO:
+                    if max_class == 1 and max_score > THRESHOLD_YES_NO:
                         self.state_in['query_params']['ok'] = True
                         print('прошли проверку на наличие подтвреждения на отправку - положительно')
-                    elif max_class == 0 and max_score > TRESHOLD_YES_NO:
+                    elif max_class == 0 and max_score > THRESHOLD_YES_NO:
                         # выходим из режима при уверенном отказе
                         print('прошли проверку на наличие подтвреждения на отправку - негативно')
                         return self.realize_user_quit()
                 else:
                     self.state_in['query_params'][param] = self.text_in
+                # обрабатываем по одному параметру за раз
                 break
-
 
 
         # оставим различия
@@ -228,6 +289,21 @@ class Slackbot:
                 self.channels = members.data['members']
                 print('персональное сообщение всем в канале "{}" отправлено'.format(self.state_in['query_params']['channel_name']))
                 response = self.state_in['query_params']['body']
+            elif self.state_in['intent'] == 'узнать о преподавателе':
+                # проверим не ввел ли пользователь несколько значений
+                print('пользователь сделал выбор: ', self.state_in['query_params']['column_id'])
+                print('команда: ', self.state_in['command'])
+                temp_df = self.schedule.run(command=self.state_in['command'])
+                temp_df = temp_df[self.state_in['query_params']['column_id'] + ['teacher']]
+                print(temp_df.columns)
+                response = 'информация по преподавателям: '
+                # temp_df = pd.DataFrame(columns=['test', 'test2'], index = [0,1], data=[[1,2], [3,4]])
+                for i in temp_df.iterrows():
+                    for j in range(len(i)):
+                        response += '\n{}'.format(i[j])
+                print(response)
+                # response = temp_df[self.state_in['query_params']['column_id']+['teacher']]
+                print('отправил данные: ')
             else:
                 print('ПОПЫТКА ОТПРАВИТЬ БЕЗ ИНТЕНТА В СПИСКЕ: <<{}>>'.format(self.state_in['intent']))
                 response = 'unknown command'
@@ -240,7 +316,7 @@ class Slackbot:
             if param == 'ok':
                 print('последний параметр для заполнения')
                 self.state_out = self.state_in
-                print(f"уточняем намерените {self.state_in['intent']}")
+                print(f"уточняем намерение {self.state_in['intent']}")
                 response = f"вы уверены, что хотите {self.state_in['intent']} с параметрами:\n"
                 for p in self.state_in['query_params']:
                     response += "{:+^20}\n".format(' '+ p +' ')
@@ -255,21 +331,32 @@ class Slackbot:
         return response
 
 
-    # принимает метку класса и возвращает название интента
     def return_intent(self, max_class):
         """
+        принимает метку класса и возвращает название интента
         :param max_class:
         :return:
         """
+        if str(max_class) not in self.responses_df['class'].tolist():
+            raise Class_none('полученного класса нет в документе гугл')
         intent_line = self.responses_df[self.responses_df['class']==str(max_class)]
         intent = intent_line.intent.values[0]
         command = intent_line.command.values[0]
-        print('команда до преобразования: ', command)
+        print('команда in: ', command)
         command = None if command not in self.commands else command
-        print('команда после преобразования: ', command)
-        reply = intent_line.reply_now.values[0]
-        print('прошел intent ')
-        return intent, command, reply
+        print('команда out: ', command)
+        # проверим наличие особого времени
+        print('text_in: ', self.text_in)
+        time_state = self.classifier.check_time(self.text_in)
+        print('получили состояние времени: ', time_state)
+        if time_state == 'future':
+            reply = intent_line.reply_future.values[0]
+        elif time_state == 'past':
+            reply = intent_line.reply_past.values[0]
+        else:
+            reply = intent_line.reply_now.values[0]
+        print('прошел intent, определил время ')
+        return intent, command, reply, time_state
 
     # преобразует строковый формат даты и времени из разных полей в одну переменную datetime
     def convert_datetime(self, temp_date, temp_time):
@@ -291,7 +378,7 @@ class Slackbot:
         response = reply
         # проверка на наличие команды
         if command == 'get_schedule':
-            print('зашел в команду')
+            print('зашел в команду: ', command)
             temp_df = self.schedule.run(command=command)
             print('зашел в интент')
             temp_df['datetime'] = temp_df.apply(lambda row: self.convert_datetime(row.date, row.time), axis=1)
@@ -303,9 +390,8 @@ class Slackbot:
             print(f'ответ по команде: {response}')
             # temp_response = None
             # TODO: сделать проверку на наличие урока в текущий момент (надо ввести в excel продолжительность занятия)
-
-            # temp_df = None
         elif command == 'tell_joke':
+            print('зашел в команду: ', command)
             url = 'http://rzhunemogu.ru/RandJSON.aspx?CType=1'
             try:
                 result = json.loads(requests.get(url).text, strict=False)
@@ -315,6 +401,7 @@ class Slackbot:
                 # self.do_command(self, 'tell_joke', response)
             print(f'ответ по команде: {response}')
         elif command == 'show_weather':
+            print('зашел в команду: ', command)
             url = 'http://api.weatherstack.com/current'
             params = {
                 'access_key': weather_key,
@@ -327,9 +414,8 @@ class Slackbot:
                             f"температура: {result['current']['temperature']}, скорость ветра: {result['current']['wind_speed']}, атмосферное давление: {result['current']['pressure']}"
             print(f'ответ по команде: {response}')
             # TODO: переименовать все атрибуты и отобрать только нужные (город, температура, ветер, давление, описание погоды), разобраться как показать иконку погоды
-        elif command == 'send_email' or command == 'send_info':
-            print('зашли в отправку письма')
-            # response = self.send_email.run(addr_to="vndanilchenko@gmail.com", theme="тестовое сообщение", body="привет, Вадим! Это тестовое сообщение от бота Нетологии")
+        elif command == 'send_email' or command == 'send_info' or command == 'who_is':
+            print('зашел в команду: ', command)
             self.state_in = self.state_out
             self.state_in['state'] = 'query'
             response = self.get_query_params()
@@ -338,6 +424,12 @@ class Slackbot:
             print('НЕОПИСАННАЯ КОМАНДА!')
             response = 'без команды зашел: {}'.format(self.commands)
         return response
+
+
+    def repeat_query(self, param):
+        self.state_out = self.state_in
+        return f'параметр не распознан:\n {param}'
+
 
     # если что-то пошло не так
     def catch_problems(self):
@@ -382,7 +474,9 @@ class Slackbot:
             print('APPROVAL')
             # # проверка классификаторов ДА/НЕТ и отсечку по трэшолду
             max_score, max_class = self.classifier.predict_proba(self.text_in, model_flag=1)
-            if max_class==1 and max_score > TRESHOLD_YES_NO:
+            print(f"THRESHOLD_APPROVAL пройден {max_score}" if max_score > THRESHOLD_APPROVAL else f"запрос не в базе знаний {max_score}")
+            if max_class==1 and max_score > THRESHOLD_YES_NO:
+                print('прошли треэшолд APPROVAL, класс: ', max_class)
                 if self.state_in['command']:
                     print('есть ответ по команде: {}'.format(self.state_in['command']))
                     reply = self.do_command(self.state_in['command'], self.state_in['reply'])
@@ -396,7 +490,7 @@ class Slackbot:
         elif self.state_in['state'] == 'query':
             # проверим не захотел ли пользователь сбросить режим
             max_score, max_class = self.classifier.predict_proba(self.text_in, model_flag=2)
-            if max_class==1 and max_score > TRESHOLD_USER_QUIT:
+            if max_class==1 and max_score > THRESHOLD_USER_QUIT:
                 # выходим из режима
                 reply = self.realize_user_quit()
             else:
@@ -407,24 +501,28 @@ class Slackbot:
         else:
             # prediction_kb = self.recognize_kb.kb_predict_proba(self.text_in)
             max_score, max_class = self.classifier.predict_proba(self.text_in, model_flag=0)
-            print(f"база распознана {max_score}" if max_score>TRESHOLD_KB else f"запрос не в базе знаний {max_score}")
-            if max_score > TRESHOLD_KB: # Был prediction_kb
+            print(f"база распознана {max_score}" if max_score > THRESHOLD_KB else f"запрос не в базе знаний {max_score}")
+            print('max_class: ', max_class)
+            if max_score > THRESHOLD_KB: # Был prediction_kb
                 # return f"Hi <@{self.user}>! \n I know what you mean.."
                 # max_score, max_class = self.recognize_kb.intent_predict_proba(self.text_in)
-                print('прошел СNN')
-                intent, command, reply = self.return_intent(max_class)
+                print('прошли треэшолд KB, класс: ', max_class)
+                print('тип класса: ', type(max_class))
+                intent, command, reply, time_state = self.return_intent(max_class)
+                print('--time_state', time_state)
                 self.state_out = {'intent': intent, 'command': command, 'state': 'normal', 'reply': reply, 'query_params': {}}
                 print('нашел интент {}, команду {}, скор {}'.format(intent, command, max_score))
-                if max_score > TRESHOLD_EXPLICIT:
+                if max_score > THRESHOLD_EXPLICIT:
                     print('EXPLICIT')
                     print(f'прошел отсечку по скору')
                     if command:
                         print('есть ответ по команде: {}'.format(command))
                         reply = self.do_command(command, reply)
                     # return reply
-                elif max_score > TRESHOLD_APPROVAL:
+                elif max_score > THRESHOLD_APPROVAL:
                     self.state_out = {'intent': intent, 'command': command, 'state': 'approval', 'reply': reply, 'query_params': {}}
-                    reply = 'ты хочешь {}?'.format(intent)
+                    translation_states = {'normal': '', 'future': 'в будущем', 'past': 'в прошлом', 'error': ''}
+                    reply = 'ты хочешь {}({})?'.format(intent, translation_states[time_state])
 
                 else:
                     reply = self.terminal_response()

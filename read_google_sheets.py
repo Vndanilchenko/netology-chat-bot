@@ -65,7 +65,7 @@ class Read_google_sheet_schedule:
         if command=='get_schedule':
             return self.read_data(data_range='A1:J1000', sheet_id='1mTxBPHze-kuSmMl6fTb_EGO3LI8Q0rZEiY-VUBccGIA')
         elif command=='who_is':
-            return self.read_data(data_range='A1:D1000', sheet_id='1mTxBPHze-kuSmMl6fTb_EGO3LI8Q0rZEiY-VUBccGIA')
+            return self.read_data(data_range='A1:D1000', sheet_id='1npAgyedIcmvjxq-mxsyp3H5XgmsVSwVMV89JJvkecUE')
         elif command=='get_responses':
             return self.read_data(data_range='A1:F1000', sheet_id='1XIR4CLXj_vRgv04_MF18JBMG4RITTP28RQ0ygNUNtGk')
         else:
@@ -73,6 +73,6 @@ class Read_google_sheet_schedule:
 
 if __name__ == '__main__':
     obj = Read_google_sheet_schedule()
-    df = obj.run(command='get_responses')
+    df = obj.run(command='who_is')
     df.columns
-    df[df['class']=='0']
+    # df[df['class']=='18']
