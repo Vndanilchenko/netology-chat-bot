@@ -49,9 +49,9 @@ try:
 except:
     from private.token import weather_key
 
-import flask as flask
+# import flask as flask
 
-app = flask.Flask(__name__)
+# app = flask.Flask(__name__)
 
 
 TRESHOLD_KB = 0.6           # считаем, что знаем вопрос
@@ -458,4 +458,4 @@ class Slackbot:
 if __name__ == '__main__':
     bot = Slackbot()
     bot.run()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # app.run(host='0.0.0.0', port=5000, debug=True)
