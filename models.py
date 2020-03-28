@@ -139,16 +139,16 @@ class Classifier:
         return predictions
 
 
-if __name__ == '__main__':
-
-    # vectors = []
-    # for i in trange(bazonka.shape[0]):
-    #     vectors.append(vectorize(preprocess(bazonka.message.iloc[i])))
-    # vectors
-    # vectors = np.asarray(vectors)
-
-    # joblib.dump(vectors, './data/kb_vectors.pkl')
-    # vectors = joblib.load('./data/kb_vectors.pkl')
-    object = Classifier()
-    score, max_class = object.intent_predict_proba('метеапрогноз', model_flag=0)
-    res = object.levenshtein_distance('метеапрогноз')
+# if __name__ == '__main__':
+#
+#     # vectors = []
+#     # for i in trange(bazonka.shape[0]):
+#     #     vectors.append(vectorize(preprocess(bazonka.message.iloc[i])))
+#     # vectors
+#     # vectors = np.asarray(vectors)
+#
+#     # joblib.dump(vectors, './data/kb_vectors.pkl')
+#     # vectors = joblib.load('./data/kb_vectors.pkl')
+#     object = Classifier()
+#     score, max_class = object.intent_predict_proba('метеапрогноз', model_flag=0)
+#     res = object.levenshtein_distance('метеапрогноз')

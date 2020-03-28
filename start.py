@@ -49,6 +49,9 @@ try:
 except:
     from private.token import weather_key
 
+import flask as flask
+
+app = flask.Flask(__name__)
 
 
 TRESHOLD_KB = 0.6           # считаем, что знаем вопрос
@@ -303,9 +306,9 @@ class Slackbot:
             try:
                 result = json.loads(requests.get(url).text, strict=False)
                 response = result['content']
-            except:
-                print(self.catch_problems(self), ' команда:', command)
-                self.do_command(self, 'tell_joke', response)
+            except Exception as e:
+                print(self.catch_problems(self), ' команда:', command, ' ошибка: ', e.args)
+                # self.do_command(self, 'tell_joke', response)
             print(f'ответ по команде: {response}')
         elif command == 'show_weather':
             url = 'http://api.weatherstack.com/current'
@@ -451,3 +454,4 @@ class Slackbot:
 if __name__ == '__main__':
     bot = Slackbot()
     bot.run()
+    app.run(host='0.0.0.0', port=8080)

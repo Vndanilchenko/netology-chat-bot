@@ -45,6 +45,6 @@ class Send_email:
         server.quit()  # Выходим
         return 'сообщение на адрес "{}" отправлено'.format(addr_to)
 
-# if __name__ == '__main__':
-#     obj = Send_email()
-#     obj.run(addr_to="@gmail.com", theme="тестовое сообщение", body="привет, друг! Это тестовое сообщение от бота Нетологии")
+if __name__ == '__main__':
+    obj = Send_email()
+    obj.run(addr_to="vndanilchenko@gmail.com", theme="тестовое сообщение", body="привет, друг! Это тестовое сообщение от бота Нетологии")

@@ -71,8 +71,8 @@ class Read_google_sheet_schedule:
         else:
             return pd.DataFrame()
 
-# if __name__ == '__main__':
-#     obj = Read_google_sheet_schedule()
-#     df = obj.run(command='get_responses')
-#     df.columns
-#     df[df['class']=='0']
+if __name__ == '__main__':
+    obj = Read_google_sheet_schedule()
+    df = obj.run(command='get_responses')
+    df.columns
+    df[df['class']=='0']
