@@ -1,2 +1,2 @@
-worker: python starterbot.py
+worker: python start.py
 #web: gunicorn start:app
