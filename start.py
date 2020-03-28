@@ -72,7 +72,7 @@ pattern_email = re.compile(r'[0-9a-zа-я_]{1,}\@{1}[a-z]{1,}\.{1}[a-z]{1,}')
 
 @app.route('/')
 def index():
-    return '<h1>Deployed to Heroku</h1>'
+    return '<h1>Netology chatbot. Deployed to Heroku</h1>'
 
 class Slackbot:
 
