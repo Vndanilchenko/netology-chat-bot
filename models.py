@@ -18,7 +18,7 @@ THRESHOLD_FUTURE = 0.9
 class Classifier:
 
     def __init__(self):
-        self.bazonka = pd.read_excel('./kb/kb.xlsx', sheet_name='kb')
+        self.bazonka = joblib.load('./data/kb.pkl')
         self.wvec = Word2Vec.load('./models/word2vec.model')
         self.word_list = joblib.load('./data/word_list.pkl')
         self.vectors = joblib.load('./data/kb_vectors.pkl')

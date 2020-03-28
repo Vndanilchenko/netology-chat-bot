@@ -1,0 +1,4 @@
+heroku ps:scale worker=1 --app netology-chat-bot
+heroku logs --tail --app netology-chat-bot
+heroku restart
+heroku run python start.py shell --app netology-chat-bot
