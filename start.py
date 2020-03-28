@@ -457,5 +457,5 @@ class Slackbot:
 
 if __name__ == '__main__':
     bot = Slackbot()
-    # bot.run()
+    bot.run()
     app.run(host='0.0.0.0', port=5000, debug=True)
