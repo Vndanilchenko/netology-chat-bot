@@ -31,6 +31,13 @@ class Send_email:
         print('инициализация Send_email: ', email)
 
     def run(self, addr_to, theme, body):
+        """
+        отправляет письмо на почту по полученным от пользователя данным
+        :param addr_to:
+        :param theme:
+        :param body:
+        :return:
+        """
         msg = MIMEMultipart()  # Создаем сообщение
         msg['From'] = self.addr_from  # Адресат
         msg['To'] = addr_to  # Получатель

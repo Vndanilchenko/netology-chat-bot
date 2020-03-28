@@ -38,25 +38,24 @@ class Read_google_sheet_schedule:
 
     def read_data(self, data_range, sheet_id):
         """
+        чтение из загруженного с гугл диска файла
         :param data_range:
         :param sheet_id:
         :return:
         """
-        # чтение из файла
         values = self.service.spreadsheets().values().get(
             spreadsheetId=sheet_id,
             range=data_range,
             majorDimension='ROWS'
         ).execute()
-        # pprint(values)
         df = pd.DataFrame(values['values'])
         df.columns = df[df.index == 0].values.tolist()[0]
         df.drop([0], axis=0, inplace=True)
         return df
 
-    # функция делает чтение из разных листов/диапазонов в зависимости от команды
     def run(self, command):
         """
+        функция делает чтение из разных листов/диапазонов в зависимости от команды
         :param command:
         :return:
         """
@@ -75,4 +74,3 @@ if __name__ == '__main__':
     obj = Read_google_sheet_schedule()
     df = obj.run(command='who_is')
     df.columns
-    # df[df['class']=='18']

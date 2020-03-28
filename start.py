@@ -50,10 +50,6 @@ try:
 except:
     from private.token import weather_key
 
-# import flask as flask
-#
-# app = flask.Flask(__name__)
-
 
 THRESHOLD_KB = 0.6           # считаем, что знаем вопрос
 THRESHOLD_EXPLICIT = 0.8     # граница уверенного ответа
@@ -70,10 +66,6 @@ pattern_id = re.compile(r'^(\<{1}\@{1}[a-zA-Z0-9]{1,}\>{1})')
 pattern_channel1 = re.compile(r'\<{1}\#{1}[A-Z0-9]{1,}\|{1}')
 pattern_rbracket = re.compile(r'\>')
 pattern_email = re.compile(r'[0-9a-zа-я_]{1,}\@{1}[a-z]{1,}\.{1}[a-z]{1,}')
-
-# @app.route('/')
-# def index():
-#     return '<h1>Netology chatbot. Deployed to Heroku</h1>'
 
 
 class Class_none(Exception):
@@ -99,15 +91,21 @@ class Slackbot:
         self.send_email = email.Send_email()
         self.weather_descr = pd.read_csv('./data/Multilingual_Weather_Conditions.csv', sep=',', encoding='utf-8')
         self.sleep_cnt = 0
+        self.time_state = 'normal'
 
     def set_default_state(self):
         """
+        октат состояний
         :return:
         """
         self.state_out = {'intent': self.state_in['intent'], 'command': self.state_in['command'], 'state': 'normal', 'reply': self.state_in['reply'], 'query_params': {}}
 
-    # функция ищет среди каналов заданное название и возвращает id, либо None
     def get_channel_id(self, channel_name):
+        """
+        функция ищет среди каналов заданное название и возвращает id, либо None
+        :param channel_name:
+        :return:
+        """
         req = self.webclient.conversations_list(types="public_channel, private_channel")
         for chanel in req.data['channels']:
             # print(chanel)
@@ -116,73 +114,71 @@ class Slackbot:
         else:
             return None
 
-    # основная функция
     def detect_message(self, **kwargs):
         """
+        основная функция - если получает сообщения из нужного канала и эти сообщения требуют ответа,
+        то вызывает по очереди все нужные дл получения ответа функции
         :param kwargs:
         :return:
         """
-        # try:
-            #     print('kwargs: ', kwargs)
-        data = kwargs['data']
-        # print('kwargs: ', data)
-        self.text_in = data.get('text', [])
-        if self.text_in and data.get('subtype', []) not in ['bot_message']:
-            self.web_client = kwargs.get('web_client', [])
-            self.rtm_client = kwargs.get('rtm_client', [])
-            self.channels = [data['channel']]
-            if 'blocks' in data:
-                self.direct_link = True if data['blocks'][0]['elements'][0]['elements'][0]['type']=='user' else False
+        try:
+            data = kwargs['data']
+            self.sleep_cnt = 0
+            self.text_in = data.get('text', [])
+            if self.text_in and data.get('subtype', []) not in ['bot_message']:
+                self.web_client = kwargs.get('web_client', [])
+                self.rtm_client = kwargs.get('rtm_client', [])
+                self.channels = [data['channel']]
+                if 'blocks' in data:
+                    self.direct_link = True if data['blocks'][0]['elements'][0]['elements'][0]['type']=='user' else False
+                else:
+                    self.direct_link = False
+                self.thread_ts = data['ts']
+                self.user = data['user']
+                if ('DMQS540H1' in self.channels or self.direct_link) and 'client_msg_id' in data:
+                    print('text_in: ', self.text_in)
+                    self.state_in = self.state_out
+                    self.text_out = self.make_response()
+                    self.reply()
+                    print('state_in: ', self.state_in)
+                    print('state_out: ', self.state_out)
+                    print('{:*^170}'.format(''))
+            # если вдруг начнет крэшиться отловить некоторые ошибки и пропустить
+        except Class_none as e:
+            print('{: ^50}'.format('+ + +'))
+            print('надо добавить интент в список реакций на google docs! \nerror: ', e.args)
+            print('{: ^50}'.format('+ + +'))
+        except TimeoutError as e:
+            print('{: ^50}'.format('+ + +'))
+            print(self.catch_problems(), ' \nerror: ', e.args)
+            if self.sleep_cnt < 3:
+                print('попробуем повторно подключиться через 30 секунд')
+                time.sleep(30)
+            elif self.sleep_cnt < 10:
+                print('попробуем повторно подключиться через 60 секунд')
+                time.sleep(60)
+            elif self.sleep_cnt < 20:
+                print('попробуем повторно подключиться через 5 минут')
+                time.sleep(300)
+            elif self.sleep_cnt < 30:
+                print('попробуем повторно подключиться через 10 минут')
+                time.sleep(600)
+            elif self.sleep_cnt < 40:
+                print('попробуем повторно подключиться через 30 минут')
+                time.sleep(1800)
             else:
-                self.direct_link = False
-            self.thread_ts = data['ts']
-            self.user = data['user']
-            if ('DMQS540H1' in self.channels or self.direct_link) and 'client_msg_id' in data:
-                print('text_in: ', self.text_in)
-                self.state_in = self.state_out
-                self.text_out = self.make_response()
-                self.reply()
-                print('state_in: ', self.state_in)
-                print('state_out: ', self.state_out)
-                print('{:*^170}'.format(''))
-        # # если вдруг начнет крэшиться отловить некоторые ошибки и пропустить
-        # except Class_none as e:
-        #     print('{: ^50}'.format('+ + +'))
-        #     print('надо добавить интент в список реакций на google docs! \nerror: ', e.args)
-        #     print('{: ^50}'.format('+ + +'))
-        # except TimeoutError as e:
-        #     print('{: ^50}'.format('+ + +'))
-        #     print(self.catch_problems(), ' \nerror: ', e.args)
-        #     if self.sleep_cnt < 3:
-        #         print('попробуем повторно подключиться через 30 секунд')
-        #         time.sleep(30)
-        #     elif self.sleep_cnt < 10:
-        #         print('попробуем повторно подключиться через 60 секунд')
-        #         time.sleep(60)
-        #     elif self.sleep_cnt < 20:
-        #         print('попробуем повторно подключиться через 5 минут')
-        #         time.sleep(300)
-        #     elif self.sleep_cnt < 30:
-        #         print('попробуем повторно подключиться через 10 минут')
-        #         time.sleep(600)
-        #     elif self.sleep_cnt < 40:
-        #         print('попробуем повторно подключиться через 30 минут')
-        #         time.sleep(1800)
-        #     else:
-        #         print('попробуем повторно подключиться через 60 минут')
-        #         time.sleep(3600)
-        #     self.run()
-        #     print('{: ^50}'.format('+ + +'))
-        # except Exception as e:
-        #     print('{: ^50}'.format('+ + +'))
-        #     print(self.catch_problems(), '\nerror: ', e.args)
-        #     print('{: ^50}'.format('+ + +'))
+                print('попробуем повторно подключиться через 60 минут')
+                time.sleep(3600)
+            self.run()
+            print('{: ^50}'.format('+ + +'))
+        except Exception as e:
+            print('{: ^50}'.format('+ + +'))
+            print(self.catch_problems(), '\nerror: ', e.args)
+            print('{: ^50}'.format('+ + +'))
 
-
-
-    # функция проверяет заполненность параметров
     def get_query_params(self):
         """
+        функция проверяет заполненность параметров
         :return:
         """
         print('зашли в query')
@@ -327,9 +323,7 @@ class Slackbot:
                 self.state_out = self.state_in
                 response = params[param]
             self.state_out['query_params'][param] = 'waiting'
-
         return response
-
 
     def return_intent(self, max_class):
         """
@@ -347,20 +341,20 @@ class Slackbot:
         print('команда out: ', command)
         # проверим наличие особого времени
         print('text_in: ', self.text_in)
-        time_state = self.classifier.check_time(self.text_in)
-        print('получили состояние времени: ', time_state)
-        if time_state == 'future':
+        self.time_state = self.classifier.check_time(self.text_in)
+        print('получили состояние времени: ', self.time_state)
+        if self.time_state == 'future':
             reply = intent_line.reply_future.values[0]
-        elif time_state == 'past':
+        elif self.time_state == 'past':
             reply = intent_line.reply_past.values[0]
         else:
             reply = intent_line.reply_now.values[0]
-        print('прошел intent, определил время ')
-        return intent, command, reply, time_state
+        print('прошел intent, определил время: ', self.time_state)
+        return intent, command, reply
 
-    # преобразует строковый формат даты и времени из разных полей в одну переменную datetime
     def convert_datetime(self, temp_date, temp_time):
         """
+        преобразует строковый формат даты и времени из разных полей в одну переменную datetime
         :param temp_date:
         :param temp_time:
         :return:
@@ -368,9 +362,9 @@ class Slackbot:
         # return (datetime.strptime(str(temp_date), '%Y-%m-%d %H:%M:%S') + (datetime.combine(date.min, temp_time) - datetime.min))
         return (datetime.strptime(str(temp_date), '%m/%d/%Y') + (datetime.combine(date.min, datetime.strptime(str(temp_time), '%H:%M').time()) - datetime.min))
 
-    # выполняет определенную команду, если такая присутствует в интенте
     def do_command(self, command, reply):
         """
+        выполняет определенную команду, если такая присутствует в интенте
         :param command:
         :param reply:
         :return:
@@ -425,47 +419,50 @@ class Slackbot:
             response = 'без команды зашел: {}'.format(self.commands)
         return response
 
-
     def repeat_query(self, param):
+        """
+        повтор запроса на получение информации, если пользователь не заполнил параметр
+        :param param:
+        :return:
+        """
         self.state_out = self.state_in
         return f'параметр не распознан:\n {param}'
 
-
-    # если что-то пошло не так
     def catch_problems(self):
         """
+        если что-то пошло не так
         :return:
         """
         self.set_default_state()
         return 'что-то пошло не так..'
 
-    # если пользователь отказался подтверждать выполнение скрипта
     def realize_user_quit(self):
         """
+        если пользователь отказался подтверждать выполнение скрипта
         :return:
         """
         self.set_default_state()
         return 'хорошо, команда отменена.\nвсегда можете попробовать сначала ;)'
 
-    # возвращает стандартное сообщение, если скор не проходит трэшолд
     def terminal_response(self):
         """
+        возвращает стандартное сообщение, если скор не проходит трэшолд
         :return:
         """
         self.set_default_state()
         return f"<@{self.user}>, \nя не понял, попробуй перефразировать"
 
-    # возвращает стандартное сообщение, если ответ клиента НЕТ
     def negative_response(self):
         """
+        возвращает стандартное сообщение, если ответ клиента НЕТ
         :return:
         """
         self.set_default_state()
         return f"<@{self.user}>, \nвозможно я еще смогу тебе помочь, попробуй иначе поставить вопрос"
 
-    # функция проверяет запрос на прохождение отсечек и режим
     def make_response(self):
         """
+        функция проверяет запрос на прохождение отсечек и режим
         :return:
         """
         # model = check_kb.recognize_kb()
@@ -508,8 +505,8 @@ class Slackbot:
                 # max_score, max_class = self.recognize_kb.intent_predict_proba(self.text_in)
                 print('прошли треэшолд KB, класс: ', max_class)
                 print('тип класса: ', type(max_class))
-                intent, command, reply, time_state = self.return_intent(max_class)
-                print('--time_state', time_state)
+                intent, command, reply = self.return_intent(max_class)
+                print('--time_state', self.time_state)
                 self.state_out = {'intent': intent, 'command': command, 'state': 'normal', 'reply': reply, 'query_params': {}}
                 print('нашел интент {}, команду {}, скор {}'.format(intent, command, max_score))
                 if max_score > THRESHOLD_EXPLICIT:
@@ -522,7 +519,7 @@ class Slackbot:
                 elif max_score > THRESHOLD_APPROVAL:
                     self.state_out = {'intent': intent, 'command': command, 'state': 'approval', 'reply': reply, 'query_params': {}}
                     translation_states = {'normal': '', 'future': 'в будущем', 'past': 'в прошлом', 'error': ''}
-                    reply = 'ты хочешь {}({})?'.format(intent, translation_states[time_state])
+                    reply = 'ты хочешь {}({})?'.format(intent, translation_states[self.time_state])
 
                 else:
                     reply = self.terminal_response()
@@ -534,8 +531,10 @@ class Slackbot:
 
     def reply(self):
         """
+        возврат ответа
         :return:
         """
+        self.time_state = 'normal'
         for channel in self.channels:
             self.web_client.chat_postMessage(
                 channel=channel
@@ -546,6 +545,7 @@ class Slackbot:
 
     def run(self):
         """
+        слушает события
         :return:
         """
         print('{:+^50}'.format(' START '))
@@ -556,4 +556,3 @@ class Slackbot:
 if __name__ == '__main__':
     bot = Slackbot()
     bot.run()
-    # app.run(host='0.0.0.0', port=5000, debug=True)

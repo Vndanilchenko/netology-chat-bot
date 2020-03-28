@@ -61,7 +61,7 @@ class Classifier:
 
     def check_phrase(self, phrase):
         """
-        проверят слова входящей фразы на наличие в словаре, в случае чего пробует найти ближайшее на заданной расстоянии
+        проверяет слова входящей фразы на наличие в словаре, в случае чего пробует найти ближайшее на заданной расстоянии
         :param phrase:
         :return:
         """
@@ -163,6 +163,13 @@ class Classifier:
             print('во время предсказания возникла ошибка: ', e.args)
             return predictions
 
+    def set_default_time_states(self):
+        """
+        обнуляет состояния времени
+        :return:
+        """
+        self.is_future = False
+        self.is_past = False
 
     def check_time(self, text):
         """
@@ -170,8 +177,9 @@ class Classifier:
         :param text: исходный запрос, text-in
         :return:
         """
+        self.set_default_time_states()
         # сначала сделаем метки на время, потом сравним и определим приоритет при одновременном наступлении
-        if any(word in ['вчера', 'раньше', 'ранее', 'прошлое', 'прошлом', 'до'] for word in str(text).split(' ')):
+        if any(word in ['вчера', 'раньше', 'ранее', 'прошлое', 'прошлом', 'до', 'было', 'был'] for word in str(text).split(' ')):
             self.is_past = True
         else:
             for word in self.morph.analyze('отправить email'):
@@ -189,15 +197,12 @@ class Classifier:
 
         # примем решение что возвращать
         if all([self.is_future, self.is_past]):
-            self.is_past == False
             return 'future'
         elif not any([self.is_future, self.is_past]):
             return 'normal'
         elif self.is_future:
-            self.is_future == False
             return 'future'
         elif self.is_past:
-            self.is_past == False
             return 'past'
         else:
             return 'error'
@@ -261,12 +266,9 @@ class Classifier:
 
 if __name__ == '__main__':
     object = Classifier()
+    object.check_time('было')
     # object.fit()
-    object.preprocess('да')
+    # object.preprocess('да')
     object.vectorize(object.preprocess('привет'))
-    # object.classifier[1]['clf'].predict_proba(object.vectorize(object.preprocess('ага')).reshape(1, -1))
-    # object.check_time('email')
-
-    score, max_class = object.predict_proba('что ты умеешь', model_flag=0)
-    # res = object.levenshtein_distance('метеапрогноз')
-    object.morph.analyze('будущем')
+    # score, max_class = object.predict_proba('что ты умеешь', model_flag=0)
+    # object.morph.analyze('будущем')
