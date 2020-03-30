@@ -5,5 +5,5 @@ Developing of the project will take some time (about a month) so all code will a
 
 If you have some questions fill free to ask directly.
 
-Sincerelly yours,
 Vadim 
+vndanilchenko@gmail.com
