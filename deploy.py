@@ -2,6 +2,8 @@
 # slack-bot for Netology
 # @author: vndanilchenko@gmail.com
 
+test version with Flask
+
 # usage example:
     import os
     import slack
