@@ -123,7 +123,6 @@ class Slackbot:
         """
         try:
             data = kwargs['data']
-            self.sleep_cnt = 0
             self.text_in = data.get('text', [])
             if self.text_in and data.get('subtype', []) not in ['bot_message']:
                 self.web_client = kwargs.get('web_client', [])
@@ -535,6 +534,7 @@ class Slackbot:
         :return:
         """
         self.time_state = 'normal'
+        self.sleep_cnt = 0
         for channel in self.channels:
             self.web_client.chat_postMessage(
                 channel=channel

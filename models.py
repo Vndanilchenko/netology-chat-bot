@@ -114,9 +114,9 @@ class Classifier:
         считает косинусное расстояние между запросом и фразами базы знаний, возвращает макс скор и индекс строки
         1 - вектора идентичны, 0 - ортогональны
         :param vectors: матриц векторов фраз из базы знаний [NxM]
-        :param vectors_norm: произведений матрицы самой на себя (вектор норм)
+        :param vectors_norm: произведений матрицы самой на себя
         :param q: вектор запроса
-        :param qn: произведение вектора запроса самого на себя (скаляр - норма)
+        :param qn: произведение вектора запроса самого на себя
         :return: вектор расстояний [Nx1]
         """
         qn = np.dot(q, q)
@@ -266,7 +266,7 @@ class Classifier:
 
 if __name__ == '__main__':
     object = Classifier()
-    object.check_time('было')
+    # object.check_time('было')
     # object.fit()
     # object.preprocess('да')
     object.vectorize(object.preprocess('привет'))
