@@ -24,7 +24,7 @@ AI logic
 ![AI logic](https://github.com/Vndanilchenko/netology-chat-bot/blob/master/images/AI%20logic.jpg)
 
 
-If you have some questions fill free to ask directly
+If you have some questions feel free to ask directly
 
 Vadim 
 
