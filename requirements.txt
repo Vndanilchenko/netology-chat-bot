@@ -20,7 +20,7 @@ httplib2==0.17.0
 idna==2.9
 idna-ssl==1.1.0
 jmespath==0.9.5
-joblib==0.14.1
+joblib==1.2.0
 multidict==4.7.5
 numpy==1.18.2
 oauth2client==4.1.3
